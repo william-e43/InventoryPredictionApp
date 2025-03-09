@@ -1,0 +1,19 @@
+# Python virtual environment
+.venv/
+
+# Environment variables
+.env
+
+# SQLite database files
+mock_orders.db
+mock_orders_backup*.db
+
+# IDE-specific files
+.idea/
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# macOS-specific files
+.DS_Store
