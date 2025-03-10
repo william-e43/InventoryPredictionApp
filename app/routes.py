@@ -1,6 +1,7 @@
 import shopify
 import requests
 from .config import Config
+from datetime import datetime, timedelta
 from flask import Blueprint, jsonify, redirect, url_for, request, render_template
 from .dashboard import get_orders_data, get_inventory_data, get_low_stock_alerts, get_stock_prediction
 from .models import Order
@@ -67,7 +68,7 @@ def callback():
             return jsonify({"error": "No access token returned"}), 400
 
         associated_scopes = token_data.get("scope", "").split(",")
-        expected_scopes = {'read_orders', 'read_products', 'read_inventory'}
+        expected_scopes = set(['read_orders', 'read_products', 'read_inventory'])
         if not all(scope in expected_scopes for scope in associated_scopes):
             print(f"Warning: Unexpected scopes returned: {associated_scopes}")
 
