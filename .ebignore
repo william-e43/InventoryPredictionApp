@@ -1,0 +1,5 @@
+*.pyc
+__pycache__
+.venv/
+mock_orders.db
+.idea/

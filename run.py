@@ -1,5 +1,7 @@
 from app import create_app
 
+app = create_app()
+
 if __name__ == "__main__":
-    app = create_app()
-    app.run(debug=True, port=5000, host='0.0.0.0')  # host='0.0.0.0' for ngrok accessibility
+    # For local testing only; Elastic Beanstalk uses gunicorn on port 8000
+    app.run(host="0.0.0.0", port=5000, debug=False)
