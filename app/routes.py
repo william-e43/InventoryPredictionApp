@@ -21,7 +21,6 @@ def home():
     else:
         return redirect(url_for('main.install', shop="quickstart-c21ead54.myshopify.com"))
 
-# Install route (unchanged)
 @bp.route("/install")
 def install():
     shop = request.args.get("shop")
@@ -35,7 +34,9 @@ def install():
     shop_url = f"https://{shop}"
     shopify.Session.setup(api_key=Config.API_KEY, secret=Config.API_SECRET)
     session = shopify.Session(shop_url, Config.API_VERSION)
-    auth_url = session.create_permission_url(Config.SCOPES, Config.REDIRECT_URI)
+    # Hardcode redirect_uri to match Shopify settings
+    redirect_uri = "http://inventory-prediction-env.eba-p2hejcym.us-east-1.elasticbeanstalk.com/auth/callback"
+    auth_url = session.create_permission_url(Config.SCOPES, redirect_uri)
     return redirect(auth_url)
 
 # Callback route (unchanged)
