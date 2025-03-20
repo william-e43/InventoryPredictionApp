@@ -35,7 +35,7 @@ def install():
     shopify.Session.setup(api_key=Config.API_KEY, secret=Config.API_SECRET)
     session = shopify.Session(shop_url, Config.API_VERSION)
     # Hardcode redirect_uri to match Shopify settings
-    redirect_uri = "http://inventory-prediction-env.eba-p2hejcym.us-east-1.elasticbeanstalk.com/auth/callback"
+    redirect_uri = "http://inventory-prediction-app.eba-p2hejcym.us-east-1.elasticbeanstalk.com/auth/callback"
     auth_url = session.create_permission_url(Config.SCOPES, redirect_uri)
     return redirect(auth_url)
 
