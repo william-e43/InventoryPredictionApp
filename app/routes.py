@@ -3,7 +3,7 @@ import requests
 from .config import Config
 from datetime import datetime, timedelta
 from flask import Blueprint, jsonify, redirect, url_for, request, render_template, current_app as app
-from .dashboard import get_orders_data, get_inventory_data, get_low_stock_alerts, get_stock_prediction
+from .dashboard import get_orders_data, get_inventory_data, get_low_stock_alerts, get_stock_predictions
 from .models import Order
 
 bp = Blueprint('main', __name__)
