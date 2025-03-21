@@ -2,7 +2,7 @@ import shopify
 import requests
 from .config import Config
 from datetime import datetime, timedelta
-from flask import Blueprint, jsonify, redirect, url_for, request, render_template
+from flask import Blueprint, jsonify, redirect, url_for, request, render_template, current_app as app
 from .dashboard import get_orders_data, get_inventory_data, get_low_stock_alerts, get_stock_prediction
 from .models import Order
 
@@ -84,38 +84,74 @@ def callback():
 def dashboard():
     shop = request.args.get("shop")
     if not shop or shop not in session_data:
-        return jsonify({"error": "Not authenticated. Please install the app."}), 401
+        app.logger.info(f"Redirecting to install for shop: {shop}")
+        return redirect(url_for('main.install', shop=shop))
 
     try:
-        daily_sales, top_products = get_orders_data()
-        if not daily_sales:
-            return render_template("dashboard.html", dashboard_content="<h1>Inventory Prediction App Dashboard (Mock Data)</h1><p>No orders found in the last 60 days.</p>")
+        app.logger.info(f"Fetching orders data for shop: {shop}")
+        orders_data = get_orders_data(shop)
+        app.logger.info(f"Orders data fetched successfully: {orders_data}")
 
-        inventory_data = get_inventory_data(top_products[0][0] if top_products else None)
-        low_stock_alerts = get_low_stock_alerts()
-        stock_prediction = get_stock_prediction(top_products)
+        app.logger.info(f"Fetching inventory data for shop: {shop}")
+        inventory_data = get_inventory_data(shop)
+        app.logger.info(f"Inventory data fetched successfully: {inventory_data}")
 
-        dashboard_content = ""
-        dashboard_content += "<h1>Inventory Prediction App Dashboard (Mock Data)</h1>"
-        dashboard_content += "<h2>Daily Sales (Last 60 Days)</h2><ul>"
-        for date, total in sorted(daily_sales.items()):
-            dashboard_content += f"<li>{date}: {total} units sold</li>"
-        dashboard_content += "</ul>"
+        app.logger.info(f"Fetching low stock alerts for shop: {shop}")
+        low_stock_alerts = get_low_stock_alerts(shop)
+        app.logger.info(f"Low stock alerts fetched successfully: {low_stock_alerts}")
 
-        dashboard_content += "<h2>Top Products by Sales Volume</h2><ul>"
-        for product_id, quantity in top_products:
-            product_title = next((item.product_title for order in Order.query.all() for item in order.line_items if item.product_id == product_id), "Unknown Product")
-            dashboard_content += f"<li>{product_title}: {quantity} units sold</li>"
-        dashboard_content += "</ul>"
-
-        dashboard_content += f"<h2>Inventory for Top Product</h2><p>{inventory_data}</p>"
-        dashboard_content += low_stock_alerts
-        dashboard_content += stock_prediction
-
-        return render_template("dashboard.html", dashboard_content=dashboard_content)
+        app.logger.info(f"Fetching stock predictions for shop: {shop}")
+        stock_predictions = get_stock_prediction(shop)
+        app.logger.info(f"Stock predictions fetched successfully: {stock_predictions}")
 
     except Exception as e:
-        print(f"Exception in dashboard: {str(e)}")
-        error_response = jsonify({"error": "Failed to fetch dashboard data", "details": str(e)})
-        error_response.status_code = 500
-        return error_response
+        app.logger.error(f"Failed to fetch dashboard data for shop {shop}: {str(e)}", exc_info=True)
+        return jsonify({"error": "Failed to fetch dashboard data", "details": str(e)}), 500
+
+    app.logger.info(f"Rendering dashboard for shop: {shop}")
+    return render_template(
+        "dashboard.html",
+        shop=shop,
+        orders_data=orders_data,
+        inventory_data=inventory_data,
+        low_stock_alerts=low_stock_alerts,
+        stock_predictions=stock_predictions
+    )
+# def dashboard():
+#     shop = request.args.get("shop")
+#     if not shop or shop not in session_data:
+#         return jsonify({"error": "Not authenticated. Please install the app."}), 401
+#
+#     try:
+#         daily_sales, top_products = get_orders_data()
+#         if not daily_sales:
+#             return render_template("dashboard.html", dashboard_content="<h1>Inventory Prediction App Dashboard (Mock Data)</h1><p>No orders found in the last 60 days.</p>")
+#
+#         inventory_data = get_inventory_data(top_products[0][0] if top_products else None)
+#         low_stock_alerts = get_low_stock_alerts()
+#         stock_prediction = get_stock_prediction(top_products)
+#
+#         dashboard_content = ""
+#         dashboard_content += "<h1>Inventory Prediction App Dashboard (Mock Data)</h1>"
+#         dashboard_content += "<h2>Daily Sales (Last 60 Days)</h2><ul>"
+#         for date, total in sorted(daily_sales.items()):
+#             dashboard_content += f"<li>{date}: {total} units sold</li>"
+#         dashboard_content += "</ul>"
+#
+#         dashboard_content += "<h2>Top Products by Sales Volume</h2><ul>"
+#         for product_id, quantity in top_products:
+#             product_title = next((item.product_title for order in Order.query.all() for item in order.line_items if item.product_id == product_id), "Unknown Product")
+#             dashboard_content += f"<li>{product_title}: {quantity} units sold</li>"
+#         dashboard_content += "</ul>"
+#
+#         dashboard_content += f"<h2>Inventory for Top Product</h2><p>{inventory_data}</p>"
+#         dashboard_content += low_stock_alerts
+#         dashboard_content += stock_prediction
+#
+#         return render_template("dashboard.html", dashboard_content=dashboard_content)
+#
+#     except Exception as e:
+#         print(f"Exception in dashboard: {str(e)}")
+#         error_response = jsonify({"error": "Failed to fetch dashboard data", "details": str(e)})
+#         error_response.status_code = 500
+#         return error_response
