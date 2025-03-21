@@ -80,6 +80,7 @@ def callback():
     except Exception as e:
         return jsonify({"error": "Internal server error", "details": str(e)}), 500
 
+
 @bp.route("/dashboard")
 def dashboard():
     shop = request.args.get("shop")
@@ -90,19 +91,19 @@ def dashboard():
     try:
         app.logger.info(f"Fetching orders data for shop: {shop}")
         orders_data = get_orders_data(shop)
-        app.logger.info(f"Orders data fetched successfully: {orders_data}")
+        app.logger.info(f"Orders data fetched: {orders_data}")
 
         app.logger.info(f"Fetching inventory data for shop: {shop}")
         inventory_data = get_inventory_data(shop)
-        app.logger.info(f"Inventory data fetched successfully: {inventory_data}")
+        app.logger.info(f"Inventory data fetched: {inventory_data}")
 
         app.logger.info(f"Fetching low stock alerts for shop: {shop}")
         low_stock_alerts = get_low_stock_alerts(shop)
-        app.logger.info(f"Low stock alerts fetched successfully: {low_stock_alerts}")
+        app.logger.info(f"Low stock alerts fetched: {low_stock_alerts}")
 
         app.logger.info(f"Fetching stock predictions for shop: {shop}")
-        stock_predictions = get_stock_prediction(shop)
-        app.logger.info(f"Stock predictions fetched successfully: {stock_predictions}")
+        stock_predictions = get_stock_predictions(shop)
+        app.logger.info(f"Stock predictions fetched: {stock_predictions}")
 
     except Exception as e:
         app.logger.error(f"Failed to fetch dashboard data for shop {shop}: {str(e)}", exc_info=True)
