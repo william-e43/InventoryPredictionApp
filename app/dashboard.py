@@ -76,29 +76,23 @@ def get_inventory_data(shop):
 def get_stock_predictions(shop):
     app.logger.info(f"Starting get_stock_predictions for shop: {shop}")
     try:
-        # Example: Fetch settings (days_of_cover, lead_time)
-        # settings = get_inventory_settings(shop)  # Hypothetical function
         days_of_cover = 30
-        lead_time =  7
+        lead_time = 7
 
         app.logger.info(f"Days of cover: {days_of_cover} (type: {type(days_of_cover)})")
         app.logger.info(f"Lead time: {lead_time} (type: {type(lead_time)})")
 
-        # Ensure integer conversion
-        days_of_cover = int(days_of_cover)
-        lead_time = int(lead_time)
-
-        # Example prediction logic
         predictions = []
         for product in Product.query.all():
             avg_daily_sales = calculate_avg_daily_sales(product, shop)
-            predicted_days = avg_daily_sales * days_of_cover
+            predicted_stock = product.total_stock - (avg_daily_sales * days_of_cover)  # Use total_stock
             restock_date = datetime.now() + timedelta(days=lead_time)
             predictions.append({
-                'product': product.name,
-                'predicted_days': predicted_days,
+                'product': product.title,
+                'predicted_stock': predicted_stock if predicted_stock > 0 else 0,
                 'restock_date': restock_date
             })
+        app.logger.info(f"Stock predictions fetched: {predictions}")
         return predictions
     except Exception as e:
         app.logger.error(f"Error in get_stock_predictions for shop {shop}: {str(e)}", exc_info=True)
@@ -107,28 +101,24 @@ def get_stock_predictions(shop):
 def get_low_stock_alerts(shop):
     app.logger.info(f"Starting get_low_stock_alerts for shop: {shop}")
     try:
-        # settings = get_inventory_settings(shop)  # Hypothetical function
+
         days_of_cover = 30
         lead_time = 7
 
         app.logger.info(f"Days of cover: {days_of_cover} (type: {type(days_of_cover)})")
         app.logger.info(f"Lead time: {lead_time} (type: {type(lead_time)})")
 
-        # Ensure integer conversion
-        days_of_cover = int(days_of_cover)
-        lead_time = int(lead_time)
-
-        # Example alert logic
         alerts = []
         for product in Product.query.all():
-            stock = product.quantity
+            stock = product.total_stock  # Use total_stock instead of quantity
             avg_daily_sales = calculate_avg_daily_sales(product, shop)
             days_remaining = stock / avg_daily_sales if avg_daily_sales > 0 else float('inf')
             if days_remaining < (days_of_cover + lead_time):
                 alerts.append({
-                    'product': product.name,
+                    'product': product.title,
                     'days_remaining': days_remaining
                 })
+        app.logger.info(f"Low stock alerts fetched: {alerts}")
         return alerts
     except Exception as e:
         app.logger.error(f"Error in get_low_stock_alerts for shop {shop}: {str(e)}", exc_info=True)
