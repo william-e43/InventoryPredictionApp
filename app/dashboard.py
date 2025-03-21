@@ -1,4 +1,4 @@
-from .models import Order, Product, InventoryLevel, InventoryItem, Variant
+from .models import Order, Product, InventoryLevel, InventoryItem, Variant, LineItem
 from datetime import datetime, timedelta
 from flask import current_app as app
 
@@ -13,71 +13,43 @@ def calculate_avg_daily_sales(product, shop, period_days=30):
     Returns:
         float: Average daily sales (quantity sold per day)
     """
+    app.logger.info(f"Starting calculate_avg_daily_sales for product: {product.id}, shop: {shop}")
     try:
-        # Calculate the start date (e.g., 30 days ago)
         start_date = datetime.now() - timedelta(days=period_days)
-
-        # Query orders for this product and shop within the period
-        orders = Order.query.filter(
-            Order.product_id == product.id,
+        line_items = LineItem.query.join(Order).filter(
+            LineItem.product_id == product.id,
             Order.shop == shop,
             Order.created_at >= start_date
         ).all()
 
-        # Sum the quantities sold
-        total_quantity = sum(order.quantity for order in orders)
-
-        # Calculate average daily sales
-        if total_quantity == 0:
-            return 0.0
-
-        # Number of days with sales (to avoid division by zero)
-        days_with_sales = (datetime.now() - start_date).days
-        if days_with_sales <= 0:
-            days_with_sales = 1
-
+        total_quantity = sum(item.quantity for item in line_items)
+        days_with_sales = (datetime.now() - start_date).days or 1
         avg_daily_sales = total_quantity / days_with_sales
+        app.logger.info(f"Average daily sales for product {product.id}: {avg_daily_sales}")
         return avg_daily_sales
     except Exception as e:
-        app.logger.error(f"Error in calculate_avg_daily_sales for product {product.id}, shop {shop}: {str(e)}",exc_info=True)
+        app.logger.error(f"Error in calculate_avg_daily_sales for product {product.id}, shop {shop}: {str(e)}", exc_info=True)
         raise
 
-
-from datetime import datetime, timedelta
-from flask import current_app as app
-from app.models import Order
-
-
 def get_orders_data(shop, since_days=30):
-    """
-    Fetch orders data for a shop over a specified period.
-    Args:
-        shop: Shopify shop domain (string)
-        since_days: Number of days to look back (default: 30)
-    Returns:
-        list: Orders data
-    """
     app.logger.info(f"Starting get_orders_data for shop: {shop}, since_days: {since_days} (type: {type(since_days)})")
     try:
-        # Ensure since_days is an integer
         since_days = int(since_days)
         app.logger.info(f"Converted since_days to: {since_days} (type: {type(since_days)})")
 
-        # Calculate the start date
         since_date = (datetime.now() - timedelta(days=since_days)).isoformat() + "Z"
         app.logger.info(f"Calculated since_date: {since_date}")
 
-        # Fetch orders from the database (mock data for now)
         orders = Order.query.filter(
             Order.shop == shop,
             Order.created_at >= datetime.now() - timedelta(days=since_days)
         ).all()
 
-        # Process orders data (example: daily sales)
         daily_sales = {}
         for order in orders:
-            date_str = order.created_at.strftime('%Y-%m-%d')
-            daily_sales[date_str] = daily_sales.get(date_str, 0) + order.quantity
+            for line_item in order.line_items:
+                date_str = order.created_at.strftime('%Y-%m-%d')
+                daily_sales[date_str] = daily_sales.get(date_str, 0) + line_item.quantity
 
         orders_data = [{'date': date, 'sales': sales} for date, sales in daily_sales.items()]
         app.logger.info(f"Orders data processed: {orders_data}")
@@ -86,21 +58,20 @@ def get_orders_data(shop, since_days=30):
         app.logger.error(f"Error in get_orders_data for shop {shop}: {str(e)}", exc_info=True)
         raise
 
-def get_inventory_data(top_product_id):
-    """Fetch total inventory for the top product."""
-    if not top_product_id:
-        return "No inventory data available"
-    product = Product.query.get(top_product_id)
-    if product:
-        total_inventory = sum(
-            level.available for level in InventoryLevel.query
-            .select_from(InventoryLevel)
-            .join(InventoryItem, InventoryLevel.inventory_item_id == InventoryItem.id)
-            .join(Variant, InventoryItem.variant_id == Variant.id)
-            .filter(Variant.product_id == top_product_id).all()
-        ) or 0
-        return f"Total inventory: {total_inventory} units available"
-    return "No inventory data available"
+def get_inventory_data(shop):
+    app.logger.info(f"Starting get_inventory_data for shop: {shop}")
+    try:
+        inventory_data = []
+        for product in Product.query.all():
+            inventory_data.append({
+                'product': product.title,
+                'stock': product.total_stock
+            })
+        app.logger.info(f"Inventory data processed: {inventory_data}")
+        return inventory_data
+    except Exception as e:
+        app.logger.error(f"Error in get_inventory_data for shop {shop}: {str(e)}", exc_info=True)
+        raise
 
 def get_stock_predictions(shop):
     app.logger.info(f"Starting get_stock_predictions for shop: {shop}")

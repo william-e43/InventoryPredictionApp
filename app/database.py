@@ -1,11 +1,11 @@
 # app/database.py
 import logging
-import random
+from random import randint, choice
 from flask import Flask
 from .models import db, Order, LineItem, Product, Variant, InventoryItem, InventoryLevel
 from .config import Config
 from datetime import datetime, timedelta
-import os
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -19,101 +19,67 @@ def init_db(app: Flask):
         db.create_all()  # Create tables if they don't exist
         logger.info("Database tables initialized.")
 
-def populate_orders(app: Flask, num_orders=500):
-    """Populate the database with a specified number of mock orders."""
+def populate_inventory(app):
     with app.app_context():
-        PRODUCTS = [
-            "8920988975395", "8922165477667", "8920989204771", "8920989106467",
-            "8920988877091", "8920988909859", "8920989237539", "8920989172003",
-            "8920989073699", "8920988942627"
-        ]
-        for i in range(num_orders):
-            order_id = f"mock_order_{i+1}"
-            created_at = (datetime.now() - timedelta(days=random.randint(1, 60))).isoformat() + "Z"
-            order = Order(id=order_id, created_at=created_at)
-            num_line_items = random.randint(1, 5)
-            selected_products = random.sample(PRODUCTS, k=num_line_items)
-            for product_id in selected_products:
-                quantity = random.randint(1, 5)
-                line_item = LineItem(
-                    order_id=order_id,
-                    product_id=product_id,
-                    product_title=next(p["title"] for p in PRODUCTS_DATA if p["id"] == product_id),
-                    quantity=quantity
-                )
-                order.line_items.append(line_item)
-            db.session.add(order)
-        db.session.commit()
-        logger.info(f"Populated {num_orders} mock orders successfully.")
-
-def populate_inventory(app: Flask):
-    """Populate the database with mock inventory data."""
-    with app.app_context():
-        variants_data = []
-        for product in PRODUCTS_DATA:
-            num_variants = random.randint(1, 4)
-            for i in range(1, num_variants + 1):
-                variant_id = f"var_{product['id']}_{i}"
-                variants_data.append({
-                    "id": variant_id,
-                    "product_id": product["id"],
-                    "title": f"{product['title']} - {random.choice(['Small', 'Medium', 'Large', 'Red', 'Blue'])}",
-                    "sku": f"SKU-{variant_id}",
-                    "inventory_item_id": f"inv_{variant_id}",
-                })
-
-        # Insert products
-        for product_data in PRODUCTS_DATA:
-            product = Product(id=product_data["id"], title=product_data["title"])
-            db.session.add(product)
-
-        # Insert variants and inventory items
-        for variant_data in variants_data:
+        products = []
+        for i in range(1, 11):
+            product = Product(
+                id=f"prod_{i}",
+                title=f"Product {i}"
+            )
             variant = Variant(
-                id=variant_data["id"],
-                product_id=variant_data["product_id"],
-                title=variant_data["title"],
-                sku=variant_data["sku"],
-                inventory_item_id=variant_data["inventory_item_id"],
+                id=f"var_{i}",
+                product_id=product.id,
+                title=f"Variant {i}",
+                inventory_item_id=f"inv_item_{i}"
             )
             inventory_item = InventoryItem(
-                id=variant_data["inventory_item_id"],
-                variant_id=variant_data["id"],
-                tracked=True,
+                id=f"inv_item_{i}",
+                variant_id=variant.id,
+                tracked=True
             )
-            db.session.add(variant)
-            db.session.add(inventory_item)
-
-        # Insert inventory levels
-        for variant_data in variants_data:
             inventory_level = InventoryLevel(
-                inventory_item_id=variant_data["inventory_item_id"],
-                available=random.randint(0, 100),
+                inventory_item_id=inventory_item.id,
+                available=randint(10, 100),
+                updated_at=datetime.now()
             )
-            db.session.add(inventory_level)
-
+            products.append(product)
+            db.session.add_all([product, variant, inventory_item, inventory_level])
         db.session.commit()
-        logger.info("Populated mock inventory data successfully.")
 
-def populate_mock_data(app: Flask, session_data: dict = None):
-    """Populate the database with mock data if it’s empty."""
+def populate_orders(app, num_orders=500, shop="quickstart-c21ead54.myshopify.com"):
     with app.app_context():
-        # Check if data already exists by counting orders
+        products = Product.query.all()
+        for i in range(num_orders):
+            product = choice(products)
+            order = Order(
+                id=f"order_{i}",
+                shop=shop,
+                created_at=datetime.now() - timedelta(days=randint(0, 30))
+            )
+            line_item = LineItem(
+                order_id=order.id,
+                product_id=product.id,
+                product_title=product.title,
+                quantity=randint(1, 10)
+            )
+            db.session.add_all([order, line_item])
+        db.session.commit()
+
+def populate_mock_data(app, session_data=None):
+    with app.app_context():
         order_count = Order.query.count()
         product_count = Product.query.count()
         if order_count == 0 or product_count == 0:
-            logger.info("No orders or products found. Populating mock data...")
+            app.logger.info("No orders or products found. Populating mock data...")
             try:
-                # Populate inventory first (products, variants, inventory items, levels)
                 populate_inventory(app)
-                # Populate 500 orders
                 populate_orders(app, num_orders=500)
-                logger.info("Mock data (inventory and 500 orders) populated successfully.")
+                app.logger.info("Mock data populated successfully.")
             except Exception as e:
                 db.session.rollback()
-                logger.error(f"Failed to populate mock data: {e}")
-        else:
-            logger.info(f"Database contains {order_count} orders and {product_count} products. Skipping default population.")
+                app.logger.error(f"Failed to populate mock data: {e}")
+
 
 def clear_database(app: Flask):
     """Clear all data from the database (for testing or reset purposes)."""
