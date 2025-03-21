@@ -84,40 +84,66 @@ def callback():
 @bp.route("/dashboard")
 def dashboard():
     shop = request.args.get("shop")
-    if not shop or shop not in session_data:
-        app.logger.info(f"Redirecting to install for shop: {shop}")
+    app.logger.info(f"Dashboard request received for shop: {shop}")
+
+    if not shop:
+        app.logger.error("Missing shop parameter in dashboard request")
+        return jsonify({"error": "Missing shop parameter"}), 400
+
+    if shop not in session_data:
+        app.logger.info(f"Shop {shop} not in session_data, redirecting to install")
         return redirect(url_for('main.install', shop=shop))
+
+    orders_data = None
+    inventory_data = None
+    low_stock_alerts = None
+    stock_predictions = None
 
     try:
         app.logger.info(f"Fetching orders data for shop: {shop}")
         orders_data = get_orders_data(shop)
         app.logger.info(f"Orders data fetched: {orders_data}")
+    except Exception as e:
+        app.logger.error(f"Failed to fetch orders data for shop {shop}: {str(e)}", exc_info=True)
+        return jsonify({"error": "Failed to fetch orders data", "details": str(e)}), 500
 
+    try:
         app.logger.info(f"Fetching inventory data for shop: {shop}")
         inventory_data = get_inventory_data(shop)
         app.logger.info(f"Inventory data fetched: {inventory_data}")
+    except Exception as e:
+        app.logger.error(f"Failed to fetch inventory data for shop {shop}: {str(e)}", exc_info=True)
+        return jsonify({"error": "Failed to fetch inventory data", "details": str(e)}), 500
 
+    try:
         app.logger.info(f"Fetching low stock alerts for shop: {shop}")
         low_stock_alerts = get_low_stock_alerts(shop)
         app.logger.info(f"Low stock alerts fetched: {low_stock_alerts}")
+    except Exception as e:
+        app.logger.error(f"Failed to fetch low stock alerts for shop {shop}: {str(e)}", exc_info=True)
+        return jsonify({"error": "Failed to fetch low stock alerts", "details": str(e)}), 500
 
+    try:
         app.logger.info(f"Fetching stock predictions for shop: {shop}")
         stock_predictions = get_stock_predictions(shop)
         app.logger.info(f"Stock predictions fetched: {stock_predictions}")
-
     except Exception as e:
-        app.logger.error(f"Failed to fetch dashboard data for shop {shop}: {str(e)}", exc_info=True)
-        return jsonify({"error": "Failed to fetch dashboard data", "details": str(e)}), 500
+        app.logger.error(f"Failed to fetch stock predictions for shop {shop}: {str(e)}", exc_info=True)
+        return jsonify({"error": "Failed to fetch stock predictions", "details": str(e)}), 500
 
-    app.logger.info(f"Rendering dashboard for shop: {shop}")
-    return render_template(
-        "dashboard.html",
-        shop=shop,
-        orders_data=orders_data,
-        inventory_data=inventory_data,
-        low_stock_alerts=low_stock_alerts,
-        stock_predictions=stock_predictions
-    )
+    try:
+        app.logger.info(f"Rendering dashboard for shop: {shop}")
+        return render_template(
+            "dashboard.html",
+            shop=shop,
+            orders_data=orders_data,
+            inventory_data=inventory_data,
+            low_stock_alerts=low_stock_alerts,
+            stock_predictions=stock_predictions
+        )
+    except Exception as e:
+        app.logger.error(f"Failed to render dashboard for shop {shop}: {str(e)}", exc_info=True)
+        return jsonify({"error": "Failed to render dashboard", "details": str(e)}), 500
 # def dashboard():
 #     shop = request.args.get("shop")
 #     if not shop or shop not in session_data:
