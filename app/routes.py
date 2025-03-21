@@ -1,4 +1,3 @@
-import hashlib
 import shopify
 import requests
 from .config import Config
@@ -12,39 +11,15 @@ session_data = {}  # In-memory storage for access tokens
 
 # Root route
 @bp.route("/")
-def index():
-    shop = request.args.get("shop")
-    hmac = request.args.get("hmac")
-    timestamp = request.args.get("timestamp")
-    host = request.args.get("host")
-
-    app.logger.info(f"Root URL accessed with params: shop={shop}, hmac={hmac}, timestamp={timestamp}, host={host}")
-
-    if not shop or not hmac or not timestamp:
-        app.logger.error("Missing required parameters in root URL request")
-        return jsonify({"error": "Missing required parameters"}), 400
-
-    # Validate HMAC
-    params = {k: v for k, v in request.args.items() if k != "hmac"}
-    sorted_params = "&".join(f"{k}={v}" for k, v in sorted(params.items()))
-    calculated_hmac = hmac.new(
-        Config.API_SECRET.encode("utf-8"),
-        sorted_params.encode("utf-8"),
-        hashlib.sha256
-    ).hexdigest()
-
-    if not hmac == calculated_hmac:
-        app.logger.error(f"HMAC validation failed: received={hmac}, calculated={calculated_hmac}")
-        return jsonify({"error": "Invalid HMAC"}), 403
-
-    # Check if the shop is in session_data
-    if shop not in session_data:
-        app.logger.info(f"Shop {shop} not in session_data, redirecting to install")
-        return redirect(url_for('main.install', shop=shop))
-
-    # Redirect to dashboard
-    app.logger.info(f"Redirecting to dashboard for shop: {shop}")
-    return redirect(url_for('main.dashboard', shop=shop))
+def home():
+    shop = request.args.get("shop")  # Check for shop in query string
+    if shop and shop in session_data:
+        return redirect(url_for('main.dashboard', shop=shop))
+    elif session_data and list(session_data.keys()):
+        default_shop = list(session_data.keys())[0]  # Use the last authenticated shop
+        return redirect(url_for('main.dashboard', shop=default_shop))
+    else:
+        return redirect(url_for('main.install', shop="quickstart-c21ead54.myshopify.com"))
 
 @bp.route("/install")
 def install():
