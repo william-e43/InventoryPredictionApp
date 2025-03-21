@@ -2,19 +2,27 @@
 <html>
 <head>
     <title>Inventory Prediction Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        canvas {
+            max-width: 600px;
+            margin: 20px 0;
+        }
+    </style>
 </head>
 <body>
     <h1>Dashboard for {{ shop }}</h1>
 
-    <h2>Orders Data</h2>
-    {% if orders_data %}
-        <ul>
-        {% for item in orders_data %}
-            <li>{{ item.date }}: {{ item.sales }} sales</li>
-        {% endfor %}
-        </ul>
-    {% else %}
+    <h2>Daily Sales (Last 30 Days)</h2>
+    <canvas id="dailySalesChart"></canvas>
+    {% if not orders_data %}
         <p>No orders data available.</p>
+    {% endif %}
+
+    <h2>Top Products by Sales</h2>
+    <canvas id="topProductsChart"></canvas>
+    {% if not orders_data %}
+        <p>No sales data available for top products.</p>
     {% endif %}
 
     <h2>Inventory Data</h2>
@@ -49,5 +57,63 @@
     {% else %}
         <p>No stock predictions available.</p>
     {% endif %}
+
+    <script>
+        // Daily Sales Chart
+        const dailySalesCtx = document.getElementById('dailySalesChart').getContext('2d');
+        const dailySalesData = {
+            labels: [{% for item in orders_data %}'{{ item.date }}'{% if not loop.last %},{% endif %}{% endfor %}],
+            datasets: [{
+                label: 'Daily Sales',
+                data: [{% for item in orders_data %}{{ item.sales }}{% if not loop.last %},{% endif %}{% endfor %}],
+                borderColor: 'rgba(75, 192, 192, 1)',
+                fill: false
+            }]
+        };
+        new Chart(dailySalesCtx, {
+            type: 'line',
+            data: dailySalesData,
+            options: {
+                responsive: true,
+                scales: {
+                    x: { title: { display: true, text: 'Date' } },
+                    y: { title: { display: true, text: 'Sales' }, beginAtZero: true }
+                }
+            }
+        });
+
+        // Top Products Chart
+        const topProducts = {};
+        {% for item in orders_data %}
+            {% for line_item in item.line_items %}
+                if (!topProducts['{{ line_item.product_title }}']) {
+                    topProducts['{{ line_item.product_title }}'] = 0;
+                }
+                topProducts['{{ line_item.product_title }}'] += {{ line_item.quantity }};
+            {% endfor %}
+        {% endfor %}
+        const topProductsCtx = document.getElementById('topProductsChart').getContext('2d');
+        const topProductsData = {
+            labels: Object.keys(topProducts),
+            datasets: [{
+                label: 'Total Sales',
+                data: Object.values(topProducts),
+                backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        };
+        new Chart(topProductsCtx, {
+            type: 'bar',
+            data: topProductsData,
+            options: {
+                responsive: true,
+                scales: {
+                    x: { title: { display: true, text: 'Product' } },
+                    y: { title: { display: true, text: 'Total Sales' }, beginAtZero: true }
+                }
+            }
+        });
+    </script>
 </body>
 </html>

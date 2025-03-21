@@ -51,7 +51,19 @@ def get_orders_data(shop, since_days=30):
                 date_str = order.created_at.strftime('%Y-%m-%d')
                 daily_sales[date_str] = daily_sales.get(date_str, 0) + line_item.quantity
 
-        orders_data = [{'date': date, 'sales': sales} for date, sales in daily_sales.items()]
+        orders_data = [
+            {
+                'date': date,
+                'sales': sales,
+                'line_items': [
+                    {'product_title': li.product_title, 'quantity': li.quantity}
+                    for order in orders
+                    for li in order.line_items
+                    if order.created_at.strftime('%Y-%m-%d') == date
+                ]
+            }
+            for date, sales in daily_sales.items()
+        ]
         app.logger.info(f"Orders data processed: {orders_data}")
         return orders_data
     except Exception as e:
