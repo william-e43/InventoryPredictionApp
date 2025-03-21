@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Inventory Prediction Dashboard</title>
+</head>
+<body>
+    <h1>Dashboard for {{ shop }}</h1>
+
+    <h2>Orders Data</h2>
+    {% if orders_data %}
+        <ul>
+        {% for item in orders_data %}
+            <li>{{ item.date }}: {{ item.sales }} sales</li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>No orders data available.</p>
+    {% endif %}
+
+    <h2>Inventory Data</h2>
+    {% if inventory_data %}
+        <ul>
+        {% for item in inventory_data %}
+            <li>{{ item.product }}: {{ item.stock }} in stock</li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>No inventory data available.</p>
+    {% endif %}
+
+    <h2>Low Stock Alerts</h2>
+    {% if low_stock_alerts %}
+        <ul>
+        {% for alert in low_stock_alerts %}
+            <li>{{ alert.product }}: {{ alert.days_remaining }} days remaining</li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>No low stock alerts.</p>
+    {% endif %}
+
+    <h2>Stock Predictions</h2>
+    {% if stock_predictions %}
+        <ul>
+        {% for prediction in stock_predictions %}
+            <li>{{ prediction.product }}: Predicted stock {{ prediction.predicted_stock }} (Restock by {{ prediction.restock_date }})</li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>No stock predictions available.</p>
+    {% endif %}
+</body>
+</html>
